@@ -1,0 +1,10 @@
+version: '2'
+services:
+
+  mqtt-rpio:
+    build:
+      context: .
+    restart: always
+    container_name: mqtt-rpio
+    command: -mqttBroker ${MQTT_BROKER} -topic ${MQTT_TOPIC} -user ${MQTT_USER} -password ${MQTT_PWD}
+    privileged: true
