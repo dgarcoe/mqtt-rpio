@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	rpio "github.com/stianeikeland/go-rpio"
 )
 
 var (
@@ -22,9 +23,18 @@ var (
 //Message Used to hold MQTT JSON messages
 type Message struct {
 	Type  string
+	GPIO  int
 	Mode  string
 	Level string
 }
+
+type GPIO struct {
+	Pin   rpio.Pin
+	Mode  string
+	Level string
+}
+
+var gpioList map[int]GPIO
 
 //Connect to the MQTT broker
 func connectMQTT() (mqtt.Client, error) {
@@ -47,6 +57,8 @@ func connectMQTT() (mqtt.Client, error) {
 func mqttCallback(client mqtt.Client, msg mqtt.Message) {
 
 	var jsonMessage Message
+	var gpioData GPIO
+
 	log.Printf("Message received: %s", msg.Payload())
 
 	err := json.Unmarshal(msg.Payload(), &jsonMessage)
@@ -54,10 +66,35 @@ func mqttCallback(client mqtt.Client, msg mqtt.Message) {
 		log.Printf("Error parsing JSON: %s", err)
 	}
 
+	typeMsg := jsonMessage.Type
+
+	switch typeMsg {
+	case "GPIOSetMode":
+		gpio := jsonMessage.GPIO
+		gpioData.Mode = jsonMessage.Mode
+		gpioData.Pin = rpio.Pin(gpio)
+		if gpioData.Mode == "Output" {
+			gpioData.Pin.Output()
+		} else if gpioData.Mode == "Input" {
+			gpioData.Pin.Input()
+		}
+		gpioList[gpio] = gpioData
+	case "GPIOLevel":
+		gpio := jsonMessage.GPIO
+		gpioData.Level = jsonMessage.Level
+		gpioData = gpioList[gpio]
+		if gpioData.Level == "High" {
+			gpioData.Pin.High()
+		} else if gpioData.Level == "Low" {
+			gpioData.Pin.Low()
+		}
+	}
+
 }
 
 func init() {
 	flag.Parse()
+	gpioList = make(map[int]GPIO)
 }
 
 func main() {
@@ -85,6 +122,13 @@ func main() {
 
 	log.Printf("Subscribed to topic %s", *topic)
 
+	err = rpio.Open()
+	if err != nil {
+		log.Fatalf("Couldn't open GPIO: %s", err)
+	}
+
 	<-c
+
+	rpio.Close()
 
 }
