@@ -70,6 +70,7 @@ func mqttCallback(client mqtt.Client, msg mqtt.Message) {
 
 	switch typeMsg {
 	case "GPIOSetMode":
+		log.Printf("GPIO %d setting mode to %s ", jsonMessage.GPIO, jsonMessage.Mode)
 		gpio := jsonMessage.GPIO
 		gpioData.Mode = jsonMessage.Mode
 		gpioData.Pin = rpio.Pin(gpio)
@@ -80,9 +81,10 @@ func mqttCallback(client mqtt.Client, msg mqtt.Message) {
 		}
 		gpioList[gpio] = gpioData
 	case "GPIOLevel":
+		log.Printf("GPIO %d setting level to %s", jsonMessage.GPIO, jsonMessage.Level)
 		gpio := jsonMessage.GPIO
-		gpioData.Level = jsonMessage.Level
 		gpioData = gpioList[gpio]
+		gpioData.Level = jsonMessage.Level
 		if gpioData.Level == "High" {
 			gpioData.Pin.High()
 		} else if gpioData.Level == "Low" {
